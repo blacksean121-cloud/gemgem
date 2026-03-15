@@ -99,7 +99,7 @@
         inset: 0;
         pointer-events: none;
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-end;
         align-items: flex-start;
         padding: 22px;
       }
@@ -117,7 +117,8 @@
       }
 
       .input-panel {
-        width: 180px;
+        width: 100%;
+        max-width: 188px;
         padding: 10px;
         border: 1px solid rgba(140, 218, 255, 0.12);
         border-radius: 18px;
@@ -287,8 +288,16 @@
         text-align: center;
       }
 
-      .guide-panel {
+      .info-row {
         width: min(100%, 760px);
+        display: grid;
+        grid-template-columns: 188px minmax(0, 1fr);
+        align-items: start;
+        gap: 14px;
+      }
+
+      .guide-panel {
+        width: 100%;
         padding: 14px 16px;
         border: 1px solid rgba(147, 220, 255, 0.12);
         border-radius: 18px;
@@ -335,13 +344,7 @@
 
         .overlay {
           padding: 14px;
-          flex-direction: column;
-          gap: 12px;
-          align-items: flex-start;
-        }
-
-        .input-panel {
-          width: 150px;
+          justify-content: center;
         }
 
         .frame::before,
@@ -361,18 +364,18 @@
         }
 
         .overlay {
+          padding: 10px;
+        }
+
+        .info-row {
+          width: min(100%, calc(100vw - 24px));
           display: grid;
           grid-template-columns: 1fr;
-          grid-template-rows: auto 1fr auto;
-          justify-items: center;
-          align-items: stretch;
-          padding: 10px;
-          gap: 8px;
+          gap: 10px;
         }
 
         .input-panel {
-          grid-row: 3;
-          width: min(calc(100% - 8px), 360px);
+          max-width: none;
           display: grid;
           grid-template-columns: 76px minmax(0, 1fr);
           grid-template-areas:
@@ -388,8 +391,6 @@
           box-shadow:
             0 10px 30px rgba(2, 6, 18, 0.24),
             inset 0 0 0 1px rgba(255, 255, 255, 0.03);
-          align-self: end;
-          justify-self: center;
         }
 
         .input-header {
@@ -435,13 +436,11 @@
         }
 
         .hint-pill {
-          grid-row: 1;
           max-width: min(88vw, 280px);
           padding: 8px 12px;
           font-size: 7px;
           letter-spacing: 0.08em;
           text-align: center;
-          justify-self: center;
         }
 
         .status {
@@ -471,42 +470,44 @@
       <div class="frame">
         <canvas id="orb" width="800" height="800" aria-label="손가락으로 만질 수 있는 AI 오브"></canvas>
         <div class="overlay" aria-hidden="true">
-          <div class="input-panel">
-            <div class="input-header">
-              <span>손 인식</span>
-              <span id="input-state" class="input-state">준비</span>
-            </div>
-            <div id="input-visual" class="input-visual">
-              <video id="camera-feed" autoplay muted playsinline></video>
-              <canvas id="camera-overlay" class="camera-overlay"></canvas>
-            </div>
-            <div id="input-caption" class="input-caption">카메라에 손을 비추면 손끝으로 공을 누를 수 있습니다.</div>
-            <div id="camera-badge" class="camera-badge">손이 아직 인식되지 않았습니다.</div>
-            <div class="input-meters">
-              <div class="meter-row">
-                <span class="meter-label">움직임</span>
-                <div class="meter-track"><span id="motion-fill" class="meter-fill motion"></span></div>
-              </div>
-              <div class="meter-row">
-                <span class="meter-label">밝기</span>
-                <div class="meter-track"><span id="light-fill" class="meter-fill light"></span></div>
-              </div>
-            </div>
-          </div>
-          <div class="hint-pill">검지로 가리키고 엄지로 집기</div>
+          <div class="hint-pill">검지로 가리키고 엄지로 집거나 주먹으로 누르기</div>
         </div>
       </div>
+      <div class="info-row">
+        <div class="input-panel">
+          <div class="input-header">
+            <span>손 인식</span>
+            <span id="input-state" class="input-state">준비</span>
+          </div>
+          <div id="input-visual" class="input-visual">
+            <video id="camera-feed" autoplay muted playsinline></video>
+            <canvas id="camera-overlay" class="camera-overlay"></canvas>
+          </div>
+          <div id="input-caption" class="input-caption">카메라에 손을 비추면 손끝으로 공을 누를 수 있습니다.</div>
+          <div id="camera-badge" class="camera-badge">손이 아직 인식되지 않았습니다.</div>
+          <div class="input-meters">
+            <div class="meter-row">
+              <span class="meter-label">움직임</span>
+              <div class="meter-track"><span id="motion-fill" class="meter-fill motion"></span></div>
+            </div>
+            <div class="meter-row">
+              <span class="meter-label">밝기</span>
+              <div class="meter-track"><span id="light-fill" class="meter-fill light"></span></div>
+            </div>
+          </div>
+        </div>
+        <section class="guide-panel" aria-label="사용 방법 안내">
+          <h2 class="guide-title">사용 방법</h2>
+          <ul class="guide-list">
+            <li>1. 카메라를 허용하면 공 뒤에 내 영상이 은은하게 보입니다.</li>
+            <li>2. 옆 카메라 창에 파란 점과 고리가 보이면 손이 인식된 상태입니다.</li>
+            <li>3. 검지 끝은 포인터이고, 엄지와 모으면 공을 집어 당길 수 있습니다.</li>
+            <li>4. 손 전체로 주먹을 쥐면 공이 눌리면서 손가락 사이로 밀려 나오는 듯하게 찌부됩니다.</li>
+            <li>5. 손 인식이 잘 안 될 때는 기존처럼 터치나 드래그로도 바로 조작할 수 있습니다.</li>
+          </ul>
+        </section>
+      </div>
       <div id="status" class="status" aria-live="polite"></div>
-      <section class="guide-panel" aria-label="사용 방법 안내">
-        <h2 class="guide-title">사용 방법</h2>
-        <ul class="guide-list">
-          <li>1. 카메라를 허용하면 공 뒤에 내 영상이 은은하게 보입니다.</li>
-          <li>2. 왼쪽 위 카메라 창에 파란 점과 고리가 보이면 검지와 엄지가 인식된 상태입니다.</li>
-          <li>3. 검지 끝이 손가락 포인터가 되고, 엄지와 검지를 모으면 공을 집습니다.</li>
-          <li>4. 손을 움직이면 공이 따라오고, 손을 떼면 다시 튕겨 나갑니다.</li>
-          <li>5. 손 인식이 잘 안 될 때는 기존처럼 터치나 드래그로도 바로 조작할 수 있습니다.</li>
-        </ul>
-      </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     <script>
@@ -596,7 +597,11 @@
           pointerY: centerY,
           pointerType: "mouse",
           force: 0,
-          pull: 0
+          pull: 0,
+          squeeze: 0,
+          targetSqueeze: 0,
+          squeezeAngle: 0,
+          squeezing: false
         };
         const shockwaves = [];
         const cameraInput = {
@@ -622,10 +627,20 @@
           targetY: centerY,
           pinch: 0,
           targetPinch: 0,
+          fist: 0,
+          targetFist: 0,
           indexNormX: 0.5,
           indexNormY: 0.5,
           thumbNormX: 0.5,
-          thumbNormY: 0.5
+          thumbNormY: 0.5,
+          palmX: centerX,
+          palmY: centerY,
+          targetPalmX: centerX,
+          targetPalmY: centerY,
+          palmNormX: 0.5,
+          palmNormY: 0.5,
+          knuckleAngle: 0,
+          targetKnuckleAngle: 0
         };
         let handsTracker = null;
 
@@ -656,6 +671,21 @@
 
         function dot(a, b) {
           return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+        }
+
+        function distance2D(a, b) {
+          return Math.hypot(a.x - b.x, a.y - b.y);
+        }
+
+        function lerpAngle(current, target, amount) {
+          let diff = target - current;
+          while (diff > Math.PI) {
+            diff -= twoPi;
+          }
+          while (diff < -Math.PI) {
+            diff += twoPi;
+          }
+          return current + diff * amount;
         }
 
         function normalize(vector) {
@@ -731,6 +761,8 @@
           const indexY = handInput.indexNormY * overlayHeight;
           const thumbX = handInput.thumbNormX * overlayWidth;
           const thumbY = handInput.thumbNormY * overlayHeight;
+          const palmX = handInput.palmNormX * overlayWidth;
+          const palmY = handInput.palmNormY * overlayHeight;
           const pinchGlow = 0.18 + handInput.pinch * 0.34;
 
           cameraOverlayCtx.save();
@@ -764,7 +796,15 @@
 
           cameraOverlayCtx.fillStyle = "rgba(228, 247, 255, 0.92)";
           cameraOverlayCtx.font = '10px "IBM Plex Mono", "SF Mono", monospace';
-          cameraOverlayCtx.fillText(handInput.pinch > 0.56 ? "집는 중" : "검지", indexX + 12, indexY - 10);
+          cameraOverlayCtx.fillText(handInput.fist > 0.58 ? "주먹" : handInput.pinch > 0.56 ? "집는 중" : "검지", indexX + 12, indexY - 10);
+
+          if (handInput.fist > 0.3) {
+            cameraOverlayCtx.strokeStyle = `rgba(164, 240, 255, ${0.24 + handInput.fist * 0.42})`;
+            cameraOverlayCtx.lineWidth = 1.4 + handInput.fist * 1.4;
+            cameraOverlayCtx.beginPath();
+            cameraOverlayCtx.arc(palmX, palmY, 12 + handInput.fist * 14, 0, twoPi);
+            cameraOverlayCtx.stroke();
+          }
           cameraOverlayCtx.restore();
         }
 
@@ -922,6 +962,7 @@
           if (!landmarks) {
             handInput.visible = false;
             handInput.targetPinch = 0;
+            handInput.targetFist = 0;
             setCameraBadge("손을 화면 안으로 가져오면 검지가 잡힙니다.", false);
             return;
           }
@@ -930,19 +971,59 @@
           const thumbTip = landmarks[4];
           const wrist = landmarks[0];
           const middleMcp = landmarks[9];
+          const palmCenter = {
+            x: (landmarks[0].x + landmarks[5].x + landmarks[9].x + landmarks[13].x + landmarks[17].x) / 5,
+            y: (landmarks[0].y + landmarks[5].y + landmarks[9].y + landmarks[13].y + landmarks[17].y) / 5
+          };
           const palmScale = Math.hypot(wrist.x - middleMcp.x, wrist.y - middleMcp.y) || 0.09;
           const pinchDistance = Math.hypot(indexTip.x - thumbTip.x, indexTip.y - thumbTip.y);
           const pinch = clamp(1 - pinchDistance / (palmScale * 0.85), 0, 1);
+          const fingerCurl = [
+            [8, 6, 5],
+            [12, 10, 9],
+            [16, 14, 13],
+            [20, 18, 17]
+          ]
+            .map(([tipIndex, pipIndex, mcpIndex]) => {
+              const tip = landmarks[tipIndex];
+              const pip = landmarks[pipIndex];
+              const mcp = landmarks[mcpIndex];
+              const tipToWrist = distance2D(tip, wrist);
+              const pipToWrist = distance2D(pip, wrist);
+              const mcpToWrist = distance2D(mcp, wrist);
+              const foldA = clamp((pipToWrist + palmScale * 0.24 - tipToWrist) / (palmScale * 0.5), 0, 1);
+              const foldB = clamp((mcpToWrist + palmScale * 0.08 - tipToWrist) / (palmScale * 0.36), 0, 1);
+              return clamp(foldA * 0.7 + foldB * 0.3, 0, 1);
+            })
+            .reduce((sum, value) => sum + value, 0) / 4;
+          const fist = clamp((fingerCurl - 0.42) / 0.45, 0, 1) * clamp(1 - pinch * 0.7, 0, 1);
+          const knuckleAngle = Math.atan2(
+            landmarks[17].y - landmarks[5].y,
+            (1 - landmarks[17].x) - (1 - landmarks[5].x)
+          );
 
           handInput.visible = true;
           handInput.targetX = (1 - indexTip.x) * width;
           handInput.targetY = indexTip.y * height;
           handInput.targetPinch = pinch;
+          handInput.targetFist = fist;
           handInput.indexNormX = 1 - indexTip.x;
           handInput.indexNormY = indexTip.y;
           handInput.thumbNormX = 1 - thumbTip.x;
           handInput.thumbNormY = thumbTip.y;
-          setCameraBadge(pinch > 0.56 ? "집는 중: 손을 움직여 공을 당겨 보세요." : "검지 추적 중: 엄지와 모으면 공을 집습니다.", true);
+          handInput.targetPalmX = (1 - palmCenter.x) * width;
+          handInput.targetPalmY = palmCenter.y * height;
+          handInput.palmNormX = 1 - palmCenter.x;
+          handInput.palmNormY = palmCenter.y;
+          handInput.targetKnuckleAngle = knuckleAngle;
+          setCameraBadge(
+            fist > 0.58
+              ? "주먹 감지: 공이 눌리며 틈 사이로 밀려 나옵니다."
+              : pinch > 0.56
+                ? "집는 중: 손을 움직여 공을 당겨 보세요."
+                : "검지 추적 중: 엄지와 모으면 공을 집습니다.",
+            true
+          );
         }
 
         async function processHandFrame() {
@@ -964,6 +1045,10 @@
           handInput.x += (handInput.targetX - handInput.x) * 0.3 * dt;
           handInput.y += (handInput.targetY - handInput.y) * 0.3 * dt;
           handInput.pinch += (handInput.targetPinch - handInput.pinch) * 0.28 * dt;
+          handInput.fist += (handInput.targetFist - handInput.fist) * 0.24 * dt;
+          handInput.palmX += (handInput.targetPalmX - handInput.palmX) * 0.26 * dt;
+          handInput.palmY += (handInput.targetPalmY - handInput.palmY) * 0.26 * dt;
+          handInput.knuckleAngle = lerpAngle(handInput.knuckleAngle, handInput.targetKnuckleAngle, 0.24 * dt);
 
           if (interaction.grabbed && interaction.pointerType !== "camera") {
             return;
@@ -977,16 +1062,39 @@
           }
 
           const anchor = orbAnchor();
-          const hoverDistance = Math.hypot(handInput.x - anchor.x, handInput.y - anchor.y);
+          const hoverX = handInput.fist > 0.38 ? handInput.palmX : handInput.x;
+          const hoverY = handInput.fist > 0.38 ? handInput.palmY : handInput.y;
+          const hoverDistance = Math.hypot(hoverX - anchor.x, hoverY - anchor.y);
           const withinReach = hoverDistance < sphereRadius + 86;
+          const wasSqueezing = interaction.squeezing;
 
-          interaction.pointerX = handInput.x;
-          interaction.pointerY = handInput.y;
+          interaction.pointerX = hoverX;
+          interaction.pointerY = hoverY;
           interaction.tracked = withinReach;
+
+          if (handInput.fist > 0.58 && withinReach) {
+            interaction.pointerType = "camera";
+            interaction.grabbed = true;
+            interaction.squeezing = true;
+            interaction.targetSqueeze = handInput.fist;
+            interaction.squeezeAngle = handInput.knuckleAngle + Math.PI * 0.5;
+            interaction.force = clamp(0.72 + handInput.fist * 0.8, 0, 1.4);
+            interaction.targetX = clamp(handInput.palmX - centerX - cameraInput.offsetX, -140, 140);
+            interaction.targetY = clamp(handInput.palmY - centerY - cameraInput.offsetY, -140, 140);
+            frameEl.classList.add("is-grabbing");
+            if (!wasSqueezing) {
+              triggerHaptic(10);
+              spawnShockwave();
+            }
+            setInputState("주먹 압착");
+            return;
+          }
 
           if (handInput.pinch > 0.56 && withinReach) {
             interaction.pointerType = "camera";
             interaction.grabbed = true;
+            interaction.squeezing = false;
+            interaction.targetSqueeze = 0;
             interaction.force = clamp(0.45 + handInput.pinch * 0.7, 0, 1.25);
             interaction.targetX = clamp(handInput.x - centerX - cameraInput.offsetX, -170, 170);
             interaction.targetY = clamp(handInput.y - centerY - cameraInput.offsetY, -170, 170);
@@ -1000,6 +1108,8 @@
           }
 
           interaction.grabbed = false;
+          interaction.squeezing = false;
+          interaction.targetSqueeze = 0;
           interaction.pointerType = "camera";
           interaction.force = handInput.visible && withinReach ? 0.32 : 0;
           interaction.targetX = 0;
@@ -1097,6 +1207,7 @@
           interaction.stretch += (targetStretch - interaction.stretch) * 0.14 * dt;
           interaction.squash += (targetSquash - interaction.squash) * 0.14 * dt;
           interaction.pull = pullMagnitude;
+          interaction.squeeze += (interaction.targetSqueeze - interaction.squeeze) * 0.18 * dt;
           cameraInput.motion += (cameraInput.targetMotion - cameraInput.motion) * 0.18 * dt;
           cameraInput.light += (cameraInput.targetLight - cameraInput.light) * 0.16 * dt;
           cameraInput.offsetX += (cameraInput.targetX - cameraInput.offsetX) * 0.12 * dt;
@@ -1212,6 +1323,8 @@
           interaction.targetY = 0;
           interaction.pointerType = "mouse";
           interaction.force = 0;
+          interaction.squeezing = false;
+          interaction.targetSqueeze = 0;
           interaction.tracked = false;
           frameEl.classList.remove("is-grabbing");
           setInputState(cameraInput.enabled ? "카메라" : "준비");
@@ -1350,7 +1463,7 @@
         }
 
         function drawTether() {
-          if (!interaction.tracked) {
+          if (!interaction.tracked || interaction.squeeze > 0.18) {
             return;
           }
 
@@ -1427,7 +1540,7 @@
           const light = normalize([Math.cos(timeSeconds * 0.35), -0.25, 1]);
           const orbX = centerX + interaction.offsetX * 0.32 + cameraInput.offsetX;
           const orbY = centerY + interaction.offsetY * 0.32 + cameraInput.offsetY;
-          const grabGeometry = interaction.tracked ? getGrabGeometry() : null;
+          const grabGeometry = interaction.tracked && interaction.squeeze < 0.16 ? getGrabGeometry() : null;
 
           drawBackdrop(timeSeconds, orbX, orbY);
           drawOrbitGuides(timeSeconds);
@@ -1446,9 +1559,29 @@
             const perpendicular = -relativeX * interaction.dirY + relativeY * interaction.dirX;
             const stretchedParallel = parallel * interaction.stretch;
             const stretchedPerpendicular = perpendicular * interaction.squash;
+            let squeezeBulge = 0;
 
             x = orbX + interaction.dirX * stretchedParallel - interaction.dirY * stretchedPerpendicular;
             y = orbY + interaction.dirY * stretchedParallel + interaction.dirX * stretchedPerpendicular;
+
+            if (interaction.squeeze > 0.02) {
+              const localX = x - orbX;
+              const localY = y - orbY;
+              const radiusFromCenter = Math.hypot(localX, localY) || 1;
+              const nx = localX / radiusFromCenter;
+              const ny = localY / radiusFromCenter;
+              const angle = Math.atan2(localY, localX) - interaction.squeezeAngle;
+              const core = Math.exp(-(radiusFromCenter * radiusFromCenter) / (2 * Math.pow(sphereRadius * 0.6, 2)));
+              const rim = Math.pow(clamp(radiusFromCenter / (sphereRadius * 0.98), 0, 1), 1.5);
+              const fingerGapWave = Math.pow(0.5 + 0.5 * Math.cos(angle * 4 + 0.45), 3.1);
+              const inward = core * interaction.squeeze * (18 + interaction.squeeze * 34);
+              const outward = rim * fingerGapWave * interaction.squeeze * (14 + interaction.squeeze * 30);
+              x -= nx * inward;
+              y -= ny * inward;
+              x += nx * outward;
+              y += ny * outward;
+              squeezeBulge = outward;
+            }
 
             if (grabGeometry) {
               const distanceToDent = Math.hypot(x - grabGeometry.dentX, y - grabGeometry.dentY);
@@ -1461,15 +1594,41 @@
               x,
               y,
               z: rotated[2],
-              pulse,
+              pulse: Math.min(1.3, pulse + squeezeBulge * 0.02),
               lighting,
               accent: item.accent,
               alpha: clamp(0.18 + depth * 0.82 + pulse * 0.28, 0, 1),
-              size: item.size * (0.76 + perspective * 1.12 + pulse * 1.45)
+              size: item.size * (0.76 + perspective * 1.12 + pulse * 1.45 + squeezeBulge * 0.02)
             });
           }
 
           renderedDots.sort((a, b) => a.z - b.z);
+
+          if (interaction.squeeze > 0.04) {
+            ctx.save();
+            ctx.globalCompositeOperation = "screen";
+            for (let lobe = 0; lobe < 4; lobe += 1) {
+              const angle = interaction.squeezeAngle + lobe * (twoPi / 4) + 0.45;
+              const burstX = orbX + Math.cos(angle) * sphereRadius * 0.72;
+              const burstY = orbY + Math.sin(angle) * sphereRadius * 0.72;
+              const burst = ctx.createRadialGradient(
+                burstX,
+                burstY,
+                0,
+                burstX,
+                burstY,
+                42 + interaction.squeeze * 26
+              );
+              burst.addColorStop(0, `rgba(213, 249, 255, ${0.1 + interaction.squeeze * 0.12})`);
+              burst.addColorStop(0.5, `rgba(123, 224, 255, ${0.08 + interaction.squeeze * 0.12})`);
+              burst.addColorStop(1, "rgba(0, 0, 0, 0)");
+              ctx.fillStyle = burst;
+              ctx.beginPath();
+              ctx.arc(burstX, burstY, 44 + interaction.squeeze * 28, 0, twoPi);
+              ctx.fill();
+            }
+            ctx.restore();
+          }
 
           for (const point of renderedDots) {
             const brightness = clamp(0.45 + point.lighting * 0.55 + point.pulse * 0.4 + point.accent * 0.08, 0, 1.2);
