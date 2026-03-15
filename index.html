@@ -532,7 +532,7 @@
           el.style.transform = `scaleX(${clamp(value, 0, 1).toFixed(3)})`;
         }
 
-        function triggerReleaseHaptic(pullMagnitude) {
+        function triggerHaptic(duration) {
           if (typeof navigator.vibrate !== "function") {
             return;
           }
@@ -542,14 +542,54 @@
             return;
           }
 
-          const duration = pullMagnitude > 110 ? 18 : pullMagnitude > 65 ? 12 : 8;
-
           try {
             navigator.vibrate(duration);
             lastHapticAt = now;
           } catch (error) {
             void error;
           }
+        }
+
+        function triggerReleaseHaptic(pullMagnitude) {
+          const duration = pullMagnitude > 110 ? 18 : pullMagnitude > 65 ? 12 : 8;
+          triggerHaptic(duration);
+        }
+
+        function getGrabGeometry() {
+          const orbX = centerX + interaction.offsetX * 0.32 + cameraInput.offsetX;
+          const orbY = centerY + interaction.offsetY * 0.32 + cameraInput.offsetY;
+          const dx = interaction.pointerX - orbX;
+          const dy = interaction.pointerY - orbY;
+          const distance = Math.hypot(dx, dy) || 1;
+          const nx = dx / distance;
+          const ny = dy / distance;
+          const tx = -ny;
+          const ty = nx;
+          const edgeX = orbX + nx * sphereRadius * 0.92;
+          const edgeY = orbY + ny * sphereRadius * 0.92;
+          const touchForce = interaction.grabbed ? 1 : interaction.force * 0.45;
+          const mouthRadius = 14 + touchForce * 18 + Math.min(14, interaction.pull * 0.04);
+          const fingerRadius = 10 + touchForce * 10;
+          const dentX = orbX + nx * sphereRadius * 0.76;
+          const dentY = orbY + ny * sphereRadius * 0.76;
+
+          return {
+            orbX,
+            orbY,
+            dx,
+            dy,
+            distance,
+            nx,
+            ny,
+            tx,
+            ty,
+            edgeX,
+            edgeY,
+            mouthRadius,
+            fingerRadius,
+            dentX,
+            dentY
+          };
         }
 
         async function setupCameraPreview() {
@@ -761,6 +801,9 @@
           interaction.targetX = clamp(point.x - centerX - cameraInput.offsetX, -170, 170);
           interaction.targetY = clamp(point.y - centerY - cameraInput.offsetY, -170, 170);
           frameEl.classList.add("is-grabbing");
+          if (interaction.pointerType === "touch" || interaction.pointerType === "pen") {
+            triggerHaptic(6);
+          }
           setInputState("Pulling");
           canvas.setPointerCapture(event.pointerId);
         }
@@ -928,28 +971,68 @@
             return;
           }
 
-          const orbX = centerX + interaction.offsetX * 0.32 + cameraInput.offsetX;
-          const orbY = centerY + interaction.offsetY * 0.32 + cameraInput.offsetY;
-          const edgeX = orbX + interaction.dirX * sphereRadius * 0.92;
-          const edgeY = orbY + interaction.dirY * sphereRadius * 0.92;
+          const geometry = getGrabGeometry();
+          const {
+            orbX,
+            orbY,
+            dx,
+            dy,
+            edgeX,
+            edgeY,
+            tx,
+            ty,
+            mouthRadius,
+            fingerRadius,
+            dentX,
+            dentY
+          } = geometry;
+          const contactAlpha = 0.12 + interaction.force * 0.22;
 
           ctx.save();
-          ctx.strokeStyle = `rgba(129, 230, 255, ${0.18 + interaction.force * 0.3})`;
-          ctx.lineWidth = 1.6 + interaction.force * 1.2;
           ctx.beginPath();
-          ctx.moveTo(edgeX, edgeY);
+          ctx.moveTo(edgeX + tx * mouthRadius, edgeY + ty * mouthRadius);
           ctx.quadraticCurveTo(
-            orbX + interaction.offsetX * 0.18,
-            orbY + interaction.offsetY * 0.18,
-            interaction.pointerX,
-            interaction.pointerY
+            orbX + dx * 0.36 + tx * fingerRadius * 0.55,
+            orbY + dy * 0.36 + ty * fingerRadius * 0.55,
+            interaction.pointerX + tx * fingerRadius,
+            interaction.pointerY + ty * fingerRadius
           );
+          ctx.arc(interaction.pointerX, interaction.pointerY, fingerRadius, Math.atan2(ty, tx), Math.atan2(-ty, -tx), false);
+          ctx.quadraticCurveTo(
+            orbX + dx * 0.36 - tx * fingerRadius * 0.55,
+            orbY + dy * 0.36 - ty * fingerRadius * 0.55,
+            edgeX - tx * mouthRadius,
+            edgeY - ty * mouthRadius
+          );
+          ctx.closePath();
+          ctx.fillStyle = `rgba(128, 231, 255, ${contactAlpha})`;
+          ctx.fill();
+
+          const dentGlow = ctx.createRadialGradient(dentX, dentY, 0, dentX, dentY, mouthRadius * 1.9);
+          dentGlow.addColorStop(0, `rgba(182, 247, 255, ${0.2 + interaction.force * 0.18})`);
+          dentGlow.addColorStop(0.45, `rgba(86, 208, 255, ${0.1 + interaction.force * 0.08})`);
+          dentGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+          ctx.fillStyle = dentGlow;
+          ctx.beginPath();
+          ctx.arc(dentX, dentY, mouthRadius * 1.8, 0, twoPi);
+          ctx.fill();
+
+          ctx.strokeStyle = `rgba(167, 242, 255, ${0.24 + interaction.force * 0.34})`;
+          ctx.lineWidth = 1.1 + interaction.force * 0.9;
+          ctx.beginPath();
+          ctx.arc(dentX, dentY, mouthRadius * 0.68, 0, twoPi);
           ctx.stroke();
 
-          ctx.fillStyle = `rgba(170, 242, 255, ${0.34 + interaction.force * 0.56})`;
+          ctx.fillStyle = `rgba(205, 246, 255, ${0.22 + interaction.force * 0.22})`;
           ctx.beginPath();
-          ctx.arc(interaction.pointerX, interaction.pointerY, 8 + interaction.force * 8, 0, twoPi);
+          ctx.arc(interaction.pointerX, interaction.pointerY, fingerRadius * 0.72, 0, twoPi);
           ctx.fill();
+
+          ctx.strokeStyle = `rgba(184, 246, 255, ${0.18 + interaction.force * 0.28})`;
+          ctx.lineWidth = 1 + interaction.force * 0.6;
+          ctx.beginPath();
+          ctx.arc(interaction.pointerX, interaction.pointerY, fingerRadius + 3, 0, twoPi);
+          ctx.stroke();
           ctx.restore();
         }
 
@@ -961,6 +1044,7 @@
           const light = normalize([Math.cos(timeSeconds * 0.35), -0.25, 1]);
           const orbX = centerX + interaction.offsetX * 0.32 + cameraInput.offsetX;
           const orbY = centerY + interaction.offsetY * 0.32 + cameraInput.offsetY;
+          const grabGeometry = interaction.tracked ? getGrabGeometry() : null;
 
           drawBackdrop(timeSeconds);
           drawOrbitGuides(timeSeconds);
@@ -982,6 +1066,13 @@
 
             x = orbX + interaction.dirX * stretchedParallel - interaction.dirY * stretchedPerpendicular;
             y = orbY + interaction.dirY * stretchedParallel + interaction.dirX * stretchedPerpendicular;
+
+            if (grabGeometry) {
+              const distanceToDent = Math.hypot(x - grabGeometry.dentX, y - grabGeometry.dentY);
+              const dentInfluence = Math.exp(-(distanceToDent * distanceToDent) / (2 * Math.pow(grabGeometry.mouthRadius * 1.5, 2)));
+              x -= grabGeometry.nx * dentInfluence * (8 + interaction.force * 12);
+              y -= grabGeometry.ny * dentInfluence * (8 + interaction.force * 12);
+            }
 
             renderedDots.push({
               x,
