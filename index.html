@@ -194,6 +194,50 @@
         text-transform: uppercase;
       }
 
+      .input-meters {
+        display: grid;
+        gap: 6px;
+        margin-top: 8px;
+      }
+
+      .meter-row {
+        display: grid;
+        grid-template-columns: 38px 1fr;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .meter-label {
+        color: rgba(203, 235, 255, 0.62);
+        font-size: 7px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .meter-track {
+        position: relative;
+        height: 6px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: rgba(108, 176, 222, 0.12);
+      }
+
+      .meter-fill {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        transform-origin: left center;
+        transform: scaleX(0);
+      }
+
+      .meter-fill.motion {
+        background: linear-gradient(90deg, rgba(103, 193, 255, 0.36), rgba(127, 248, 255, 0.94));
+      }
+
+      .meter-fill.light {
+        background: linear-gradient(90deg, rgba(101, 120, 255, 0.24), rgba(215, 243, 255, 0.92));
+      }
+
       @keyframes pulse-dot {
         0%,
         100% {
@@ -280,6 +324,10 @@
           letter-spacing: 0.08em;
         }
 
+        .meter-label {
+          font-size: 6px;
+        }
+
         .status {
           font-size: 10px;
           letter-spacing: 0.12em;
@@ -301,7 +349,17 @@
             <div id="input-visual" class="input-visual">
               <video id="camera-feed" autoplay muted playsinline></video>
             </div>
-            <div id="input-caption" class="input-caption">Drag works immediately. Mobile haptics trigger on release when supported.</div>
+            <div id="input-caption" class="input-caption">Move in the camera to push the orb. Drag still works immediately.</div>
+            <div class="input-meters">
+              <div class="meter-row">
+                <span class="meter-label">Motion</span>
+                <div class="meter-track"><span id="motion-fill" class="meter-fill motion"></span></div>
+              </div>
+              <div class="meter-row">
+                <span class="meter-label">Light</span>
+                <div class="meter-track"><span id="light-fill" class="meter-fill light"></span></div>
+              </div>
+            </div>
           </div>
           <div class="hint-pill">Drag orb with mouse or touch</div>
         </div>
@@ -318,8 +376,21 @@
         const inputVisualEl = document.getElementById("input-visual");
         const inputCaptionEl = document.getElementById("input-caption");
         const cameraFeedEl = document.getElementById("camera-feed");
+        const motionFillEl = document.getElementById("motion-fill");
+        const lightFillEl = document.getElementById("light-fill");
 
-        if (!canvas || !ctx || !frameEl || !statusEl || !inputStateEl || !inputVisualEl || !inputCaptionEl || !cameraFeedEl) {
+        if (
+          !canvas ||
+          !ctx ||
+          !frameEl ||
+          !statusEl ||
+          !inputStateEl ||
+          !inputVisualEl ||
+          !inputCaptionEl ||
+          !cameraFeedEl ||
+          !motionFillEl ||
+          !lightFillEl
+        ) {
           return;
         }
 
@@ -355,6 +426,10 @@
         const dots = createSphereDots(760);
         let cameraStream = null;
         let lastHapticAt = 0;
+        const cameraAnalysisCanvas = document.createElement("canvas");
+        cameraAnalysisCanvas.width = 64;
+        cameraAnalysisCanvas.height = 48;
+        const cameraAnalysisCtx = cameraAnalysisCanvas.getContext("2d", { willReadFrequently: true });
         const interaction = {
           tracked: false,
           grabbed: false,
@@ -375,6 +450,19 @@
           pull: 0
         };
         const shockwaves = [];
+        const cameraInput = {
+          enabled: false,
+          lastSampleAt: 0,
+          previousFrame: null,
+          motion: 0,
+          targetMotion: 0,
+          light: 0,
+          targetLight: 0,
+          offsetX: 0,
+          offsetY: 0,
+          targetX: 0,
+          targetY: 0
+        };
 
         setInputState("Ready");
 
@@ -440,6 +528,10 @@
           inputCaptionEl.textContent = label;
         }
 
+        function setMeterValue(el, value) {
+          el.style.transform = `scaleX(${clamp(value, 0, 1).toFixed(3)})`;
+        }
+
         function triggerReleaseHaptic(pullMagnitude) {
           if (typeof navigator.vibrate !== "function") {
             return;
@@ -490,8 +582,9 @@
             cameraFeedEl.srcObject = cameraStream;
             await cameraFeedEl.play().catch(() => {});
             inputVisualEl.classList.add("has-camera");
-            setInputState("Camera");
-            setInputCaption("Live preview active. Drag still controls the orb.");
+            cameraInput.enabled = true;
+            setInputState("Live");
+            setInputCaption("Move in the camera to push the orb. Drag still works immediately.");
           } catch (error) {
             const name = error && error.name ? error.name : "Error";
             inputVisualEl.classList.remove("has-camera");
@@ -511,6 +604,72 @@
             setInputState("Failed");
             setInputCaption("Camera could not start here. Drag input still works.");
           }
+        }
+
+        function sampleCamera(now) {
+          if (!cameraInput.enabled || !cameraAnalysisCtx || cameraFeedEl.readyState < 2) {
+            return;
+          }
+
+          if (now - cameraInput.lastSampleAt < 90) {
+            return;
+          }
+
+          cameraInput.lastSampleAt = now;
+
+          const sampleWidth = cameraAnalysisCanvas.width;
+          const sampleHeight = cameraAnalysisCanvas.height;
+          cameraAnalysisCtx.drawImage(cameraFeedEl, 0, 0, sampleWidth, sampleHeight);
+          const frame = cameraAnalysisCtx.getImageData(0, 0, sampleWidth, sampleHeight).data;
+          const nextFrame = new Uint8Array(sampleWidth * sampleHeight);
+
+          let brightnessSum = 0;
+          let motionSum = 0;
+          let weightedX = 0;
+          let weightedY = 0;
+
+          for (let y = 0; y < sampleHeight; y += 1) {
+            for (let x = 0; x < sampleWidth; x += 1) {
+              const pixelIndex = y * sampleWidth + x;
+              const dataIndex = pixelIndex * 4;
+              const luma = Math.round(frame[dataIndex] * 0.299 + frame[dataIndex + 1] * 0.587 + frame[dataIndex + 2] * 0.114);
+
+              nextFrame[pixelIndex] = luma;
+              brightnessSum += luma;
+
+              if (cameraInput.previousFrame) {
+                const diff = Math.abs(luma - cameraInput.previousFrame[pixelIndex]);
+                if (diff > 18) {
+                  motionSum += diff;
+                  weightedX += x * diff;
+                  weightedY += y * diff;
+                }
+              }
+            }
+          }
+
+          cameraInput.previousFrame = nextFrame;
+
+          const totalPixels = sampleWidth * sampleHeight;
+          const averageLight = brightnessSum / (totalPixels * 255);
+          const averageMotion = clamp(motionSum / (totalPixels * 26), 0, 1);
+
+          cameraInput.targetLight = averageLight;
+          cameraInput.targetMotion = averageMotion;
+
+          if (averageMotion > 0.04 && motionSum > 0) {
+            const centroidX = 1 - weightedX / motionSum / Math.max(1, sampleWidth - 1);
+            const centroidY = weightedY / motionSum / Math.max(1, sampleHeight - 1);
+            const push = averageMotion * 120;
+            cameraInput.targetX = (centroidX - 0.5) * 2 * push;
+            cameraInput.targetY = (centroidY - 0.5) * 1.35 * push;
+          } else {
+            cameraInput.targetX = 0;
+            cameraInput.targetY = 0;
+          }
+
+          setMeterValue(motionFillEl, averageMotion);
+          setMeterValue(lightFillEl, averageLight);
         }
 
         function updateInteraction(dt) {
@@ -536,6 +695,10 @@
           interaction.stretch += (targetStretch - interaction.stretch) * 0.14 * dt;
           interaction.squash += (targetSquash - interaction.squash) * 0.14 * dt;
           interaction.pull = pullMagnitude;
+          cameraInput.motion += (cameraInput.targetMotion - cameraInput.motion) * 0.18 * dt;
+          cameraInput.light += (cameraInput.targetLight - cameraInput.light) * 0.16 * dt;
+          cameraInput.offsetX += (cameraInput.targetX - cameraInput.offsetX) * 0.12 * dt;
+          cameraInput.offsetY += (cameraInput.targetY - cameraInput.offsetY) * 0.12 * dt;
 
           for (let index = shockwaves.length - 1; index >= 0; index -= 1) {
             const wave = shockwaves[index];
@@ -559,8 +722,8 @@
 
         function orbAnchor() {
           return {
-            x: centerX + interaction.offsetX * 0.32,
-            y: centerY + interaction.offsetY * 0.32
+            x: centerX + interaction.offsetX * 0.32 + cameraInput.offsetX,
+            y: centerY + interaction.offsetY * 0.32 + cameraInput.offsetY
           };
         }
 
@@ -595,8 +758,8 @@
 
           interaction.grabbed = true;
           interaction.force = 1;
-          interaction.targetX = clamp(point.x - centerX, -170, 170);
-          interaction.targetY = clamp(point.y - centerY, -170, 170);
+          interaction.targetX = clamp(point.x - centerX - cameraInput.offsetX, -170, 170);
+          interaction.targetY = clamp(point.y - centerY - cameraInput.offsetY, -170, 170);
           frameEl.classList.add("is-grabbing");
           setInputState("Pulling");
           canvas.setPointerCapture(event.pointerId);
@@ -612,8 +775,8 @@
           interaction.pointerY = point.y;
 
           if (interaction.grabbed) {
-            interaction.targetX = clamp(point.x - centerX, -170, 170);
-            interaction.targetY = clamp(point.y - centerY, -170, 170);
+            interaction.targetX = clamp(point.x - centerX - cameraInput.offsetX, -170, 170);
+            interaction.targetY = clamp(point.y - centerY - cameraInput.offsetY, -170, 170);
             interaction.force = 1;
             return;
           }
@@ -621,7 +784,7 @@
           const anchor = orbAnchor();
           const hoverDistance = Math.hypot(point.x - anchor.x, point.y - anchor.y);
           interaction.tracked = hoverDistance < sphereRadius + 50;
-          setInputState(interaction.tracked ? "Hover" : "Ready");
+          setInputState(interaction.tracked ? "Hover" : cameraInput.enabled ? "Live" : "Ready");
         }
 
         function endPull(event) {
@@ -646,7 +809,7 @@
           interaction.force = 0;
           interaction.tracked = false;
           frameEl.classList.remove("is-grabbing");
-          setInputState("Ready");
+          setInputState(cameraInput.enabled ? "Live" : "Ready");
 
           if (event && typeof canvas.releasePointerCapture === "function") {
             try {
@@ -700,6 +863,23 @@
           ctx.arc(centerX, centerY, 310, 0, twoPi);
           ctx.fill();
 
+          if (cameraInput.motion > 0.02) {
+            const reactiveGlow = ctx.createRadialGradient(
+              centerX + cameraInput.offsetX * 0.5,
+              centerY + cameraInput.offsetY * 0.5,
+              40,
+              centerX + cameraInput.offsetX * 0.5,
+              centerY + cameraInput.offsetY * 0.5,
+              240 + cameraInput.motion * 90
+            );
+            reactiveGlow.addColorStop(0, `rgba(143, 233, 255, ${0.06 + cameraInput.motion * 0.08})`);
+            reactiveGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+            ctx.fillStyle = reactiveGlow;
+            ctx.beginPath();
+            ctx.arc(centerX + cameraInput.offsetX * 0.5, centerY + cameraInput.offsetY * 0.5, 260, 0, twoPi);
+            ctx.fill();
+          }
+
           ctx.save();
           for (const wave of shockwaves) {
             ctx.strokeStyle = `rgba(132, 229, 255, ${wave.alpha})`;
@@ -716,8 +896,8 @@
           ctx.strokeStyle = "rgba(131, 219, 255, 0.12)";
           ctx.lineWidth = 1;
 
-          const guideX = centerX + interaction.offsetX * 0.24;
-          const guideY = centerY + interaction.offsetY * 0.24;
+          const guideX = centerX + interaction.offsetX * 0.24 + cameraInput.offsetX * 0.82;
+          const guideY = centerY + interaction.offsetY * 0.24 + cameraInput.offsetY * 0.82;
 
           for (let i = 0; i < 3; i += 1) {
             ctx.beginPath();
@@ -726,7 +906,7 @@
               guideY,
               sphereRadius + 18 + i * 16,
               sphereRadius * (0.28 + i * 0.06),
-              timeSeconds * (0.22 + i * 0.05) + i * 0.9 + interaction.pull * 0.002,
+              timeSeconds * (0.22 + i * 0.05) + i * 0.9 + interaction.pull * 0.002 + cameraInput.motion * 0.5,
               0,
               twoPi
             );
@@ -748,8 +928,8 @@
             return;
           }
 
-          const orbX = centerX + interaction.offsetX * 0.32;
-          const orbY = centerY + interaction.offsetY * 0.32;
+          const orbX = centerX + interaction.offsetX * 0.32 + cameraInput.offsetX;
+          const orbY = centerY + interaction.offsetY * 0.32 + cameraInput.offsetY;
           const edgeX = orbX + interaction.dirX * sphereRadius * 0.92;
           const edgeY = orbY + interaction.dirY * sphereRadius * 0.92;
 
@@ -775,12 +955,12 @@
 
         function drawOrb(loopTime) {
           const timeSeconds = loopTime * 0.001;
-          const yaw = timeSeconds * 0.92;
-          const pitch = Math.sin(timeSeconds * 0.72) * 0.42;
+          const yaw = timeSeconds * (0.92 + cameraInput.motion * 0.5);
+          const pitch = Math.sin(timeSeconds * 0.72 + cameraInput.motion * 1.8) * (0.42 + cameraInput.motion * 0.12);
           const renderedDots = [];
           const light = normalize([Math.cos(timeSeconds * 0.35), -0.25, 1]);
-          const orbX = centerX + interaction.offsetX * 0.32;
-          const orbY = centerY + interaction.offsetY * 0.32;
+          const orbX = centerX + interaction.offsetX * 0.32 + cameraInput.offsetX;
+          const orbY = centerY + interaction.offsetY * 0.32 + cameraInput.offsetY;
 
           drawBackdrop(timeSeconds);
           drawOrbitGuides(timeSeconds);
@@ -792,7 +972,7 @@
             let x = orbX + rotated[0] * sphereRadius * perspective;
             let y = orbY + rotated[1] * sphereRadius * perspective;
             const lighting = clamp(dot(rotated, light) * 0.5 + 0.5, 0, 1);
-            const pulse = pulseAt(item.base, timeSeconds);
+            const pulse = Math.min(1, pulseAt(item.base, timeSeconds) + cameraInput.motion * 0.22);
             const relativeX = x - orbX;
             const relativeY = y - orbY;
             const parallel = relativeX * interaction.dirX + relativeY * interaction.dirY;
@@ -819,9 +999,10 @@
 
           for (const point of renderedDots) {
             const brightness = clamp(0.45 + point.lighting * 0.55 + point.pulse * 0.4 + point.accent * 0.08, 0, 1.2);
-            const red = Math.round(90 + 70 * brightness + point.pulse * 40);
-            const green = Math.round(170 + 55 * brightness + point.pulse * 24);
-            const blue = Math.round(225 + 18 * brightness);
+            const lightBoost = cameraInput.light * 18;
+            const red = Math.round(90 + 70 * brightness + point.pulse * 40 + lightBoost * 0.2);
+            const green = Math.round(170 + 55 * brightness + point.pulse * 24 + lightBoost * 0.4);
+            const blue = Math.round(225 + 18 * brightness + lightBoost);
 
             if (point.pulse > 0.24) {
               ctx.beginPath();
@@ -861,6 +1042,7 @@
           const loopTime = now % loopMs;
           const dt = clamp((now - lastTime) / 16.6667 || 1, 0.75, 1.8);
           lastTime = now;
+          sampleCamera(now);
           updateInteraction(dt);
           updateStatus(loopTime);
           drawOrb(loopTime);
