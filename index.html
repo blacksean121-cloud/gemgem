@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>AI Thinking Orb</title>
+    <title>손으로 만지는 AI 오브</title>
     <style>
       :root {
         color-scheme: dark;
@@ -166,6 +166,15 @@
         opacity: 0.88;
       }
 
+      .camera-overlay {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+        pointer-events: none;
+      }
+
       .input-visual::before,
       .input-visual::after {
         content: "";
@@ -190,8 +199,25 @@
         margin-top: 8px;
         color: rgba(196, 232, 255, 0.64);
         font-size: 8px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
+        line-height: 1.45;
+        letter-spacing: 0.04em;
+      }
+
+      .camera-badge {
+        margin-top: 8px;
+        padding: 6px 8px;
+        border: 1px solid rgba(142, 216, 255, 0.14);
+        border-radius: 999px;
+        color: rgba(203, 236, 255, 0.76);
+        background: rgba(6, 13, 24, 0.54);
+        font-size: 8px;
+        letter-spacing: 0.04em;
+      }
+
+      .camera-badge.is-active {
+        color: rgba(226, 247, 255, 0.96);
+        border-color: rgba(143, 227, 255, 0.28);
+        background: rgba(11, 28, 44, 0.72);
       }
 
       .input-meters {
@@ -259,6 +285,38 @@
         color: var(--text);
         will-change: opacity, transform;
         text-align: center;
+      }
+
+      .guide-panel {
+        width: min(100%, 760px);
+        padding: 14px 16px;
+        border: 1px solid rgba(147, 220, 255, 0.12);
+        border-radius: 18px;
+        background: rgba(5, 12, 24, 0.5);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+        backdrop-filter: blur(10px);
+      }
+
+      .guide-title {
+        margin: 0 0 10px;
+        color: rgba(221, 245, 255, 0.92);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      .guide-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 6px;
+      }
+
+      .guide-list li {
+        color: rgba(205, 233, 255, 0.72);
+        font-size: 12px;
+        line-height: 1.45;
       }
 
       @media (max-width: 820px) {
@@ -333,39 +391,66 @@
           letter-spacing: 0.12em;
           max-width: min(100%, 92vw);
         }
+
+        .guide-panel {
+          padding: 12px;
+          border-radius: 16px;
+        }
+
+        .guide-title {
+          font-size: 10px;
+          letter-spacing: 0.12em;
+        }
+
+        .guide-list li {
+          font-size: 11px;
+        }
       }
     </style>
   </head>
   <body>
     <main class="stage">
       <div class="frame">
-        <canvas id="orb" width="800" height="800" aria-label="Animated AI thinking orb"></canvas>
+        <canvas id="orb" width="800" height="800" aria-label="손가락으로 만질 수 있는 AI 오브"></canvas>
         <div class="overlay" aria-hidden="true">
           <div class="input-panel">
             <div class="input-header">
-              <span>Direct Input</span>
-              <span id="input-state" class="input-state">Ready</span>
+              <span>손 인식</span>
+              <span id="input-state" class="input-state">준비</span>
             </div>
             <div id="input-visual" class="input-visual">
               <video id="camera-feed" autoplay muted playsinline></video>
+              <canvas id="camera-overlay" class="camera-overlay"></canvas>
             </div>
-            <div id="input-caption" class="input-caption">Move in the camera to push the orb. Drag still works immediately.</div>
+            <div id="input-caption" class="input-caption">카메라에 손을 비추면 손끝으로 공을 누를 수 있습니다.</div>
+            <div id="camera-badge" class="camera-badge">손이 아직 인식되지 않았습니다.</div>
             <div class="input-meters">
               <div class="meter-row">
-                <span class="meter-label">Motion</span>
+                <span class="meter-label">움직임</span>
                 <div class="meter-track"><span id="motion-fill" class="meter-fill motion"></span></div>
               </div>
               <div class="meter-row">
-                <span class="meter-label">Light</span>
+                <span class="meter-label">밝기</span>
                 <div class="meter-track"><span id="light-fill" class="meter-fill light"></span></div>
               </div>
             </div>
           </div>
-          <div class="hint-pill">Drag orb with mouse or touch</div>
+          <div class="hint-pill">검지로 가리키고 엄지로 집기</div>
         </div>
       </div>
       <div id="status" class="status" aria-live="polite"></div>
+      <section class="guide-panel" aria-label="사용 방법 안내">
+        <h2 class="guide-title">사용 방법</h2>
+        <ul class="guide-list">
+          <li>1. 카메라를 허용하면 공 뒤에 내 영상이 은은하게 보입니다.</li>
+          <li>2. 왼쪽 위 카메라 창에 파란 점과 고리가 보이면 검지와 엄지가 인식된 상태입니다.</li>
+          <li>3. 검지 끝이 손가락 포인터가 되고, 엄지와 검지를 모으면 공을 집습니다.</li>
+          <li>4. 손을 움직이면 공이 따라오고, 손을 떼면 다시 튕겨 나갑니다.</li>
+          <li>5. 손 인식이 잘 안 될 때는 기존처럼 터치나 드래그로도 바로 조작할 수 있습니다.</li>
+        </ul>
+      </section>
     </main>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     <script>
       (() => {
         const canvas = document.getElementById("orb");
@@ -376,8 +461,11 @@
         const inputVisualEl = document.getElementById("input-visual");
         const inputCaptionEl = document.getElementById("input-caption");
         const cameraFeedEl = document.getElementById("camera-feed");
+        const cameraOverlayEl = document.getElementById("camera-overlay");
+        const cameraBadgeEl = document.getElementById("camera-badge");
         const motionFillEl = document.getElementById("motion-fill");
         const lightFillEl = document.getElementById("light-fill");
+        const cameraOverlayCtx = cameraOverlayEl && cameraOverlayEl.getContext("2d");
 
         if (
           !canvas ||
@@ -388,6 +476,9 @@
           !inputVisualEl ||
           !inputCaptionEl ||
           !cameraFeedEl ||
+          !cameraOverlayEl ||
+          !cameraBadgeEl ||
+          !cameraOverlayCtx ||
           !motionFillEl ||
           !lightFillEl
         ) {
@@ -407,12 +498,12 @@
           : (callback) => window.setTimeout(() => callback(performance.now()), 16);
 
         const tasks = [
-          "Analyzing context..",
-          "Searching vector space...",
-          "Optimizing response.....",
-          "Synthesizing signal...",
-          "Aligning latent intent..",
-          "Refining final output..."
+          "맥락 분석 중..",
+          "손가락 좌표 추적 중...",
+          "반응 경로 조정 중.....",
+          "표면 펄스 합성 중...",
+          "제스처 의도 정렬 중..",
+          "출력 흐름 다듬는 중..."
         ];
 
         const stars = Array.from({ length: 42 }, () => ({
@@ -463,8 +554,24 @@
           targetX: 0,
           targetY: 0
         };
+        const handInput = {
+          available: false,
+          visible: false,
+          processing: false,
+          x: centerX,
+          y: centerY,
+          targetX: centerX,
+          targetY: centerY,
+          pinch: 0,
+          targetPinch: 0,
+          indexNormX: 0.5,
+          indexNormY: 0.5,
+          thumbNormX: 0.5,
+          thumbNormY: 0.5
+        };
+        let handsTracker = null;
 
-        setInputState("Ready");
+        setInputState("준비");
 
         function createSphereDots(count) {
           const goldenAngle = Math.PI * (3 - Math.sqrt(5));
@@ -528,8 +635,79 @@
           inputCaptionEl.textContent = label;
         }
 
+        function setCameraBadge(label, active) {
+          cameraBadgeEl.textContent = label;
+          cameraBadgeEl.classList.toggle("is-active", !!active);
+        }
+
         function setMeterValue(el, value) {
           el.style.transform = `scaleX(${clamp(value, 0, 1).toFixed(3)})`;
+        }
+
+        function resizeCameraOverlay() {
+          const rect = inputVisualEl.getBoundingClientRect();
+          const pixelRatio = window.devicePixelRatio || 1;
+          const nextWidth = Math.max(1, Math.round(rect.width * pixelRatio));
+          const nextHeight = Math.max(1, Math.round(rect.height * pixelRatio));
+
+          if (cameraOverlayEl.width !== nextWidth || cameraOverlayEl.height !== nextHeight) {
+            cameraOverlayEl.width = nextWidth;
+            cameraOverlayEl.height = nextHeight;
+          }
+        }
+
+        function drawCameraOverlay() {
+          resizeCameraOverlay();
+
+          const pixelRatio = window.devicePixelRatio || 1;
+          const overlayWidth = cameraOverlayEl.width / pixelRatio;
+          const overlayHeight = cameraOverlayEl.height / pixelRatio;
+          cameraOverlayCtx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+          cameraOverlayCtx.clearRect(0, 0, overlayWidth, overlayHeight);
+
+          if (!handInput.visible) {
+            return;
+          }
+
+          const indexX = handInput.indexNormX * overlayWidth;
+          const indexY = handInput.indexNormY * overlayHeight;
+          const thumbX = handInput.thumbNormX * overlayWidth;
+          const thumbY = handInput.thumbNormY * overlayHeight;
+          const pinchGlow = 0.18 + handInput.pinch * 0.34;
+
+          cameraOverlayCtx.save();
+          cameraOverlayCtx.lineCap = "round";
+          cameraOverlayCtx.lineJoin = "round";
+          cameraOverlayCtx.strokeStyle = `rgba(138, 227, 255, ${0.34 + handInput.pinch * 0.42})`;
+          cameraOverlayCtx.lineWidth = 2;
+          cameraOverlayCtx.beginPath();
+          cameraOverlayCtx.moveTo(indexX, indexY);
+          cameraOverlayCtx.lineTo(thumbX, thumbY);
+          cameraOverlayCtx.stroke();
+
+          cameraOverlayCtx.fillStyle = `rgba(153, 234, 255, ${0.82 + handInput.pinch * 0.12})`;
+          cameraOverlayCtx.beginPath();
+          cameraOverlayCtx.arc(thumbX, thumbY, 5, 0, twoPi);
+          cameraOverlayCtx.fill();
+
+          cameraOverlayCtx.shadowBlur = 18;
+          cameraOverlayCtx.shadowColor = `rgba(120, 220, 255, ${0.45 + handInput.pinch * 0.35})`;
+          cameraOverlayCtx.strokeStyle = `rgba(193, 244, 255, ${0.74 + handInput.pinch * 0.18})`;
+          cameraOverlayCtx.lineWidth = 2.4;
+          cameraOverlayCtx.beginPath();
+          cameraOverlayCtx.arc(indexX, indexY, 10 + handInput.pinch * 8, 0, twoPi);
+          cameraOverlayCtx.stroke();
+
+          cameraOverlayCtx.shadowBlur = 0;
+          cameraOverlayCtx.fillStyle = `rgba(216, 248, 255, ${0.8 + pinchGlow})`;
+          cameraOverlayCtx.beginPath();
+          cameraOverlayCtx.arc(indexX, indexY, 4.6, 0, twoPi);
+          cameraOverlayCtx.fill();
+
+          cameraOverlayCtx.fillStyle = "rgba(228, 247, 255, 0.92)";
+          cameraOverlayCtx.font = '10px "IBM Plex Mono", "SF Mono", monospace';
+          cameraOverlayCtx.fillText(handInput.pinch > 0.56 ? "집는 중" : "검지", indexX + 12, indexY - 10);
+          cameraOverlayCtx.restore();
         }
 
         function triggerHaptic(duration) {
@@ -595,20 +773,22 @@
         async function setupCameraPreview() {
           const hasMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
           if (!hasMedia) {
-            setInputState("No camera");
-            setInputCaption("This browser does not expose getUserMedia.");
+            setInputState("카메라 없음");
+            setInputCaption("이 브라우저에서는 카메라 접근을 제공하지 않습니다.");
+            setCameraBadge("카메라를 지원하지 않는 브라우저입니다.", false);
             return;
           }
 
           if (!window.isSecureContext && location.hostname !== "localhost" && location.protocol !== "file:") {
-            setInputState("Blocked");
-            setInputCaption("Open via https or localhost to use the camera.");
+            setInputState("차단됨");
+            setInputCaption("카메라는 https 또는 localhost 에서 열어야 사용할 수 있습니다.");
+            setCameraBadge("보안 연결에서만 카메라를 사용할 수 있습니다.", false);
             return;
           }
 
           try {
-            setInputState("Starting");
-            setInputCaption("Allow camera access if the browser asks.");
+            setInputState("시작 중");
+            setInputCaption("브라우저가 묻는다면 카메라 권한을 허용해 주세요.");
 
             cameraStream = await navigator.mediaDevices.getUserMedia({
               audio: false,
@@ -623,27 +803,151 @@
             await cameraFeedEl.play().catch(() => {});
             inputVisualEl.classList.add("has-camera");
             cameraInput.enabled = true;
-            setInputState("Live");
-            setInputCaption("Move in the camera to push the orb. Drag still works immediately.");
+            setInputState("카메라");
+            setInputCaption("손을 비추면 손끝으로 공을 만질 수 있습니다. 터치도 계속 동작합니다.");
+            setCameraBadge("손을 화면 안으로 가져오면 검지와 엄지를 찾습니다.", false);
           } catch (error) {
             const name = error && error.name ? error.name : "Error";
             inputVisualEl.classList.remove("has-camera");
 
             if (name === "NotAllowedError") {
-              setInputState("Denied");
-              setInputCaption("Camera permission was denied by the browser.");
+              setInputState("거부됨");
+              setInputCaption("브라우저에서 카메라 권한이 거부되었습니다.");
+              setCameraBadge("카메라 권한을 허용해야 손 인식이 동작합니다.", false);
               return;
             }
 
             if (name === "NotFoundError" || name === "DevicesNotFoundError") {
-              setInputState("Missing");
-              setInputCaption("No camera device was found.");
+              setInputState("장치 없음");
+              setInputCaption("사용 가능한 카메라 장치를 찾지 못했습니다.");
+              setCameraBadge("사용 가능한 전면 카메라를 찾지 못했습니다.", false);
               return;
             }
 
-            setInputState("Failed");
-            setInputCaption("Camera could not start here. Drag input still works.");
+            setInputState("실패");
+            setInputCaption("이 환경에서는 카메라 시작에 실패했습니다. 터치와 드래그는 계속 동작합니다.");
+            setCameraBadge("카메라 없이도 터치 드래그는 계속 사용할 수 있습니다.", false);
           }
+        }
+
+        async function setupHandTracking() {
+          if (typeof window.Hands !== "function") {
+            setInputCaption("손 인식 모듈을 불러오지 못했습니다. 카메라 반응과 터치 조작은 계속 동작합니다.");
+            setCameraBadge("손 인식 모듈을 불러오지 못했습니다.", false);
+            return;
+          }
+
+          try {
+            handsTracker = new window.Hands({
+              locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            });
+
+            handsTracker.setOptions({
+              maxNumHands: 1,
+              modelComplexity: 0,
+              minDetectionConfidence: 0.62,
+              minTrackingConfidence: 0.55,
+              selfieMode: true
+            });
+            handsTracker.onResults(handleHandResults);
+            handInput.available = true;
+            setCameraBadge("손 인식 준비 완료. 카메라에 손을 비춰 주세요.", false);
+          } catch (error) {
+            handInput.available = false;
+            setInputCaption("손 인식 시작에 실패했습니다. 카메라 반응과 터치 조작은 계속 동작합니다.");
+            setCameraBadge("손 인식을 시작하지 못했습니다.", false);
+          }
+        }
+
+        function handleHandResults(results) {
+          const landmarks = results && results.multiHandLandmarks && results.multiHandLandmarks[0];
+          if (!landmarks) {
+            handInput.visible = false;
+            handInput.targetPinch = 0;
+            setCameraBadge("손을 화면 안으로 가져오면 검지가 잡힙니다.", false);
+            return;
+          }
+
+          const indexTip = landmarks[8];
+          const thumbTip = landmarks[4];
+          const wrist = landmarks[0];
+          const middleMcp = landmarks[9];
+          const palmScale = Math.hypot(wrist.x - middleMcp.x, wrist.y - middleMcp.y) || 0.09;
+          const pinchDistance = Math.hypot(indexTip.x - thumbTip.x, indexTip.y - thumbTip.y);
+          const pinch = clamp(1 - pinchDistance / (palmScale * 0.85), 0, 1);
+
+          handInput.visible = true;
+          handInput.targetX = (1 - indexTip.x) * width;
+          handInput.targetY = indexTip.y * height;
+          handInput.targetPinch = pinch;
+          handInput.indexNormX = 1 - indexTip.x;
+          handInput.indexNormY = indexTip.y;
+          handInput.thumbNormX = 1 - thumbTip.x;
+          handInput.thumbNormY = thumbTip.y;
+          setCameraBadge(pinch > 0.56 ? "집는 중: 손을 움직여 공을 당겨 보세요." : "검지 추적 중: 엄지와 모으면 공을 집습니다.", true);
+        }
+
+        async function processHandFrame() {
+          if (!handInput.available || !handsTracker || handInput.processing || cameraFeedEl.readyState < 2) {
+            return;
+          }
+
+          try {
+            handInput.processing = true;
+            await handsTracker.send({ image: cameraFeedEl });
+          } catch (error) {
+            void error;
+          } finally {
+            handInput.processing = false;
+          }
+        }
+
+        function syncHandInteraction(dt) {
+          handInput.x += (handInput.targetX - handInput.x) * 0.3 * dt;
+          handInput.y += (handInput.targetY - handInput.y) * 0.3 * dt;
+          handInput.pinch += (handInput.targetPinch - handInput.pinch) * 0.28 * dt;
+
+          if (interaction.grabbed && interaction.pointerType !== "camera") {
+            return;
+          }
+
+          if (!handInput.visible) {
+            if (interaction.pointerType === "camera") {
+              endPull();
+            }
+            return;
+          }
+
+          const anchor = orbAnchor();
+          const hoverDistance = Math.hypot(handInput.x - anchor.x, handInput.y - anchor.y);
+          const withinReach = hoverDistance < sphereRadius + 86;
+
+          interaction.pointerX = handInput.x;
+          interaction.pointerY = handInput.y;
+          interaction.tracked = withinReach;
+
+          if (handInput.pinch > 0.56 && withinReach) {
+            interaction.pointerType = "camera";
+            interaction.grabbed = true;
+            interaction.force = clamp(0.45 + handInput.pinch * 0.7, 0, 1.25);
+            interaction.targetX = clamp(handInput.x - centerX - cameraInput.offsetX, -170, 170);
+            interaction.targetY = clamp(handInput.y - centerY - cameraInput.offsetY, -170, 170);
+            frameEl.classList.add("is-grabbing");
+            setInputState("손 추적");
+            return;
+          }
+
+          if (interaction.pointerType === "camera" && interaction.grabbed) {
+            spawnShockwave();
+          }
+
+          interaction.grabbed = false;
+          interaction.pointerType = "camera";
+          interaction.force = handInput.visible && withinReach ? 0.32 : 0;
+          interaction.targetX = 0;
+          interaction.targetY = 0;
+          frameEl.classList.remove("is-grabbing");
+          setInputState(withinReach ? "손끝" : cameraInput.enabled ? "카메라" : "준비");
         }
 
         function sampleCamera(now) {
@@ -804,7 +1108,7 @@
           if (interaction.pointerType === "touch" || interaction.pointerType === "pen") {
             triggerHaptic(6);
           }
-          setInputState("Pulling");
+          setInputState("잡는 중");
           canvas.setPointerCapture(event.pointerId);
         }
 
@@ -827,7 +1131,7 @@
           const anchor = orbAnchor();
           const hoverDistance = Math.hypot(point.x - anchor.x, point.y - anchor.y);
           interaction.tracked = hoverDistance < sphereRadius + 50;
-          setInputState(interaction.tracked ? "Hover" : cameraInput.enabled ? "Live" : "Ready");
+          setInputState(interaction.tracked ? "접촉" : cameraInput.enabled ? "카메라" : "준비");
         }
 
         function endPull(event) {
@@ -852,7 +1156,7 @@
           interaction.force = 0;
           interaction.tracked = false;
           frameEl.classList.remove("is-grabbing");
-          setInputState(cameraInput.enabled ? "Live" : "Ready");
+          setInputState(cameraInput.enabled ? "카메라" : "준비");
 
           if (event && typeof canvas.releasePointerCapture === "function") {
             try {
@@ -875,13 +1179,34 @@
           statusEl.style.transform = `translateY(${shift.toFixed(2)}px)`;
         }
 
-        function drawBackdrop(timeSeconds) {
+        function drawBackdrop(timeSeconds, orbX, orbY) {
           ctx.clearRect(0, 0, width, height);
 
+          if (cameraInput.enabled && cameraFeedEl.readyState >= 2 && cameraFeedEl.videoWidth > 0) {
+            const videoRatio = cameraFeedEl.videoWidth / cameraFeedEl.videoHeight;
+            const targetRadius = sphereRadius * 1.55;
+            const targetWidth = targetRadius * 2;
+            const targetHeight = targetWidth / videoRatio;
+            const drawHeight = Math.max(targetRadius * 2.3, targetHeight);
+            const drawWidth = drawHeight * videoRatio;
+            const drawX = orbX - drawWidth * 0.5;
+            const drawY = orbY - drawHeight * 0.5;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.ellipse(orbX, orbY, targetRadius, targetRadius * 1.02, 0, 0, twoPi);
+          ctx.clip();
+          ctx.globalAlpha = 0.42;
+          ctx.translate(width, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(cameraFeedEl, width - (drawX + drawWidth), drawY, drawWidth, drawHeight);
+          ctx.restore();
+        }
+
           const baseGlow = ctx.createRadialGradient(centerX, centerY - 12, 90, centerX, centerY, 390);
-          baseGlow.addColorStop(0, "rgba(20, 58, 116, 0.32)");
-          baseGlow.addColorStop(0.48, "rgba(8, 17, 34, 0.28)");
-          baseGlow.addColorStop(1, "rgba(3, 7, 14, 0.96)");
+          baseGlow.addColorStop(0, "rgba(20, 58, 116, 0.26)");
+          baseGlow.addColorStop(0.48, "rgba(8, 17, 34, 0.24)");
+          baseGlow.addColorStop(1, "rgba(3, 7, 14, 0.84)");
           ctx.fillStyle = baseGlow;
           ctx.fillRect(0, 0, width, height);
 
@@ -897,13 +1222,13 @@
           }
           ctx.restore();
 
-          const halo = ctx.createRadialGradient(centerX, centerY, 50, centerX, centerY, 290);
+          const halo = ctx.createRadialGradient(orbX, orbY, 50, orbX, orbY, 290);
           halo.addColorStop(0, "rgba(108, 225, 255, 0.14)");
           halo.addColorStop(0.46, "rgba(34, 110, 194, 0.12)");
           halo.addColorStop(1, "rgba(0, 0, 0, 0)");
           ctx.fillStyle = halo;
           ctx.beginPath();
-          ctx.arc(centerX, centerY, 310, 0, twoPi);
+          ctx.arc(orbX, orbY, 310, 0, twoPi);
           ctx.fill();
 
           if (cameraInput.motion > 0.02) {
@@ -1046,7 +1371,7 @@
           const orbY = centerY + interaction.offsetY * 0.32 + cameraInput.offsetY;
           const grabGeometry = interaction.tracked ? getGrabGeometry() : null;
 
-          drawBackdrop(timeSeconds);
+          drawBackdrop(timeSeconds, orbX, orbY);
           drawOrbitGuides(timeSeconds);
 
           for (const item of dots) {
@@ -1134,13 +1459,17 @@
           const dt = clamp((now - lastTime) / 16.6667 || 1, 0.75, 1.8);
           lastTime = now;
           sampleCamera(now);
+          processHandFrame();
           updateInteraction(dt);
+          syncHandInteraction(dt);
           updateStatus(loopTime);
           drawOrb(loopTime);
+          drawCameraOverlay();
           raf(animate);
         }
 
         statusEl.textContent = tasks[0];
+        setupHandTracking();
         setupCameraPreview();
         canvas.addEventListener("pointerdown", beginPull);
         canvas.addEventListener("pointermove", movePull);
@@ -1152,6 +1481,7 @@
           }
         });
         window.addEventListener("resize", () => {
+          resizeCameraOverlay();
           endPull();
         });
         window.addEventListener("beforeunload", () => {
